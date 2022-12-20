@@ -80,12 +80,10 @@ class Application:
                                     f.write(batch)
                             plugin(tmp_path, file_path)
                         except:
-                            if os.path.isfile(file_path):
-                                os.remove(file_path)
+                            self.__safe_remove(file_path)
                             raise
                         finally:
-                            if os.path.isfile(tmp_path):
-                                os.remove(tmp_path)
+                            self.__safe_remove(tmp_path)
                     finally:
                         response.close()
                         response.release_conn()
@@ -100,13 +98,22 @@ class Application:
         shutil.move(path_in, path_out)
 
     def on_extract_gz(self, path_in, path_out):
-        with gzip.open(path_in, "rb") as f_in:
-            with open(path_out, "wb") as f_out:
-                shutil.copyfileobj(f_in, f_out)
+        path_tmp = path_in + ".tml" 
+        try:
+            with gzip.open(path_in, "rb") as f_in:
+                with open(path_tmp, "wb") as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+            self.on_move_file(path_tmp, path_out)
+        finally:
+            self.__safe_remove(path_tmp)
 
     def __stop(self, signum, frame):
         print("Stop signal received");
         self.running = False
+
+    def __safe_remove(self, path):
+        if os.path.isfile(path):
+            os.remove(path)
 
 
 def main():
