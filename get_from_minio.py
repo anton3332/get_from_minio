@@ -7,6 +7,13 @@ from time import sleep
 from minio import Minio
 
 
+def get_sleep_subperiods(t):
+    v = t / 0.1
+    for i in range(int(v)):
+        yield 0.1
+    yield 0.1 * (v - int(v))
+
+
 class Application:
     def __init__(self):
         self.plugins = {
@@ -17,21 +24,21 @@ class Application:
         signal.signal(signal.SIGUSR1, self.__stop)
 
         parser = argparse.ArgumentParser()
-        parser.add_argument("-url", help="URL of server")
-        parser.add_argument("-acc", help="Access key (login)")
-        parser.add_argument("-secret", help="Secret key (password)")
-        parser.add_argument("-bucket", help="Bucket name")
-        parser.add_argument("-out_dir", help="Directory to download files to")
-        parser.add_argument("-pause", type=float, help="Pause between attempts")
-        parser.add_argument("--tmp-dir", default="/tmp", help="Temp directory")
-        parser.add_argument("--pid-file", required=False, help="File with process ID")
+        parser.add_argument("-url", help="URL of server.")
+        parser.add_argument("-acc", help="Access key (login).")
+        parser.add_argument("-secret", help="Secret key (password).")
+        parser.add_argument("-bucket", help="Bucket name.")
+        parser.add_argument("-out_dir", help="Directory to download files to.")
+        parser.add_argument("-period", type=float, help="Period between attempts.")
+        parser.add_argument("--tmp-dir", default="/tmp", help="Temp directory.")
+        parser.add_argument("--pid-file", required=False, help="File with process ID.")
         args = parser.parse_args()
         self.url = args.url
         self.acc = args.acc
         self.secret = args.secret
         self.bucket = args.bucket
         self.out_dir = args.out_dir
-        self.pause = args.pause
+        self.period = args.period
         self.tmp_dir = args.tmp_dir
         self.pid_file = args.pid_file
 
@@ -88,7 +95,10 @@ class Application:
                         response.close()
                         response.release_conn()
                     existing_files.add(name)
-            sleep(self.pause)
+            for t in get_sleep_subperiods(self.period):
+                if not self.running:
+                    return
+                sleep(t)
 
     def on_stop(self):
         if self.pid_file is not None:
